@@ -1,0 +1,98 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Function Guesser</title>
+  <link rel="stylesheet" href="main.css">
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>Function Guesser</h1>
+    </header>
+
+    <main>
+      <section id="leftPanel" class="sidePanel">
+        <div class="panel">
+          <label>Query f(x)</label>
+          <div class="row">
+            <input id="queryX" type="text" placeholder="e.g. 2 or 1.5" />
+            <button id="queryBtn" class="btn-primary">Query</button>
+          </div>
+        </div>
+        
+        <div class="panel">
+          <label>Results</label>
+          <table id="queryHistory" class="query-table">
+            <thead>
+              <tr>
+                <th>$$x$$</th>
+                <th>$$f(x)$$</th>
+              </tr>
+            </thead>
+            <tbody id="queryTableBody">
+            </tbody>
+          </table>
+        </div>
+        
+        <div class="panel small">
+          <label>Display</label>
+          <div class="control-group">
+            <label><input id="showGrid" type="checkbox" checked/> Show Grid</label>
+          </div>
+          <div class="control-group">
+            <label><input id="showNumbers" type="checkbox" checked/> Grid Numbers</label>
+          </div>
+          <div class="control-group">
+            <label><input id="showQueryPoints" type="checkbox" checked/> Query Points</label>
+          </div>
+          <div class="control-group">
+            <label>Range X:</label>
+            <input id="rangeX" type="range" min="5" max="40" value="10"/>
+            <span id="rangeValue">10</span>
+          </div>
+        </div>
+      </section>
+
+      <section id="plot">
+        <canvas id="canvas" width="800" height="600"></canvas>
+        <div id="legend"><span class="dot guess"></span> Your Guess <span class="dot query-point"></span> Query Points</div>
+      </section>
+      
+      <section id="rightPanel" class="sidePanel">
+        <div class="panel">
+          <label>Your Guess</label>
+          <div id="formulaBuilder" class="formula-builder">
+            <input id="guessInput" type="text" placeholder="e.g. 2x+3 or sin(x) or x^2" />
+            <div id="latexPreview" class="latex-preview">$$f(x) = $$</div>
+            <div class="formula-buttons">
+              <button type="button" class="formula-btn" data-insert="x" title="Variable x">x</button>
+              <button type="button" class="formula-btn" data-insert="^2" title="Square">²</button>
+              <button type="button" class="formula-btn" data-insert="^3" title="Cube">³</button>
+              <button type="button" class="formula-btn" data-insert="\sin(" title="Sine">\sin</button>
+              <button type="button" class="formula-btn" data-insert="\cos(" title="Cosine">\cos</button>
+              <button type="button" class="formula-btn" data-insert="\sqrt{" title="Square Root">\sqrt</button>
+              <button type="button" class="formula-btn" data-insert="/" title="Division">÷</button>
+            </div>
+          </div>
+          <div id="message" aria-live="polite" class="message-box"></div>
+        </div>
+
+        <div class="panel button-group">
+          <button id="submitGuess" class="btn-success">Submit Guess</button>
+          <button id="revealBtn" class="btn-info">Reveal</button>
+          <button id="nextBtn" class="btn-secondary">Skip Level</button>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <small>Design inspired by GeoGebra. Font: Times New Roman.</small>
+    </footer>
+  </div>
+
+  <script src="main.js"></script>
+</body>
+</html>
