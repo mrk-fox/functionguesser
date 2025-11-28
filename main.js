@@ -1,4 +1,4 @@
-﻿// Function Guesser main.js
+﻿
 (function(){
   // Utilities
   function randInt(a,b){return Math.floor(Math.random()*(b-a+1))+a}
@@ -16,37 +16,146 @@
   const queryHistory = [];
 
   function generateTarget(l){
-    // Increase complexity with level
-    if(l<=1) return constant(1);
+    // First 4 levels are fixed
+    if(l===1) return constant();
     if(l===2) return linear();
     if(l===3) return quadratic();
-    if(l===4) return cubic();
-    if(l===5) return polynomial(4);
-    if(l===6) return trig();
-    // for higher levels mix types and coefficients
-    const p = l%6;
-    if(p===1) return constant(randInt(-5,5)||1);
-    if(p===2) return linear();
-    if(p===3) return quadratic();
-    if(p===4) return polynomial(3);
-    if(p===5) return trig();
-    return polynomial(4);
+    if(l===4) return trigonometric();
+    
+    // Levels 5-14: random, max 1 monome with x
+    if(l >= 5 && l <= 14){
+      return randomSingleMonomeFunctionWithConstant();
+    }
+    
+    // Level 15+: random, CAN have 2 monomes with x
+    return randomFunction(l >= 15);
   }
 
-  function constant(c){return {expr: String(c), fn: (x)=>c, desc:'constant'} }
-  function linear(){const a=randInt(-5,5); const b=randInt(-6,6); return {expr:`${a}*x+${b}`, fn:(x)=>a*x+b, desc:'linear'}}
-  function quadratic(){const a=randInt(-3,3)||1;const b=randInt(-5,5);const c=randInt(-6,6);return {expr:`${a}*x*x+${b}*x+${c}`,fn:(x)=>a*x*x+b*x+c,desc:'quadratic'}}
-  function cubic(){const a=randInt(-2,2)||1;const b=randInt(-4,4);const c=randInt(-4,4);const d=randInt(-5,5);return {expr:`${a}*x*x*x+${b}*x*x+${c}*x+${d}`,fn:(x)=>a*x*x*x+b*x*x+c*x+d,desc:'cubic'}}
-  function polynomial(deg){let terms=[]; for(let i=deg;i>=0;i--){terms.push(randInt(-3,3)||0 + (i===0?randInt(-6,6):0))} // ensure randomness
-    let exprParts=[]; let coefs=terms; for(let i=0;i<coefs.length;i++){const power=coefs.length-1-i; const c=coefs[i]; if(c===0) continue; if(power===0) exprParts.push(`${c}`); else if(power===1) exprParts.push(`${c}*x`); else exprParts.push(`${c}*x^${power}`)}
-    // fallback constant
-    if(exprParts.length===0) return constant(randInt(0,5)||1);
-    // Simplified fn using eval-safe creation
-    const expr = exprParts.join('+').replace(/x\*x\*x\*x/g,'x*x*x*x').replace(/x\*x\*x/g,'x*x*x').replace(/x\*x/g,'x*x');
-    const fn = new Function('x','return '+expr);
-    return {expr,fn,desc:'polynomial'}
+  function constant(){
+    const c = randInt(-5, 5) || randInt(-2, 2) || 1;
+    return {expr: String(c), fn: (x)=>c, desc:'constant'};
   }
-  function trig(){const A=randInt(1,4); const B=randInt(1,4); const C=(randInt(-3,3)/2).toFixed(2); const D=randInt(-3,3); const expr=`${A}*Math.sin(${B}*x+${C})+${D}`; const fn=(x)=>A*Math.sin(B*x+parseFloat(C))+D; return {expr,fn,desc:'trigonometric'} }
+
+  function linear(){
+    const a = randInt(-5, 5) || randInt(-2, 2) || 1;
+    const b = randInt(-6, 6);
+    return {expr:`${a}*x+${b}`, fn:(x)=>a*x+b, desc:'linear'};
+  }
+
+  function quadratic(){
+    const a = randInt(-3, 3) || randInt(-2, 2) || 1;
+    const c = randInt(-6, 6);
+    return {expr:`${a}*x*x+${c}`, fn:(x)=>a*x*x+c, desc:'quadratic'};
+  }
+
+  function trigonometric(){
+    const A = randInt(1, 4);
+    const B = randInt(1, 3);
+    const C = (randInt(-2, 2)/2).toFixed(1);
+    const D = randInt(-3, 3);
+    const expr = `${A}*Math.sin(${B}*x+${C})+${D}`;
+    const fn = (x)=>A*Math.sin(B*x+parseFloat(C))+D;
+    return {expr, fn, desc:'trigonometric'};
+  }
+
+  function randomSingleMonomeFunctionWithConstant(){
+    // Generate function with max 1 monome with x (not a constant)
+    const types = ['linear', 'quadratic', 'cubic', 'sqrt', 'trig'];
+    const type = types[Math.floor(Math.random() * types.length)];
+    
+    switch(type){
+      case 'linear':
+        const a1 = randInt(-5, 5) || randInt(-2, 2) || 1;
+        const b1 = randInt(-6, 6);
+        return {expr:`${a1}*x+${b1}`, fn:(x)=>a1*x+b1, desc:'linear'};
+      case 'quadratic':
+        const a2 = randInt(-3, 3) || randInt(-2, 2) || 1;
+        const b2 = randInt(-6, 6);
+        return {expr:`${a2}*x*x+${b2}`, fn:(x)=>a2*x*x+b2, desc:'quadratic'};
+      case 'cubic':
+        const a3 = randInt(-2, 2) || randInt(-1, 1) || 1;
+        const b3 = randInt(-6, 6);
+        return {expr:`${a3}*x*x*x+${b3}`, fn:(x)=>a3*x*x*x+b3, desc:'cubic'};
+      case 'sqrt':
+        const a4 = randInt(1, 3);
+        const b4 = randInt(-4, 4);
+        return {expr:`${a4}*sqrt(x)+${b4}`, fn:(x)=>{const sx=Math.sqrt(x); return isFinite(sx)?a4*sx+b4:NaN}, desc:'sqrt'};
+      case 'trig':
+        const A = randInt(1, 4);
+        const B = randInt(1, 3);
+        const D = randInt(-3, 3);
+        return {expr:`${A}*Math.sin(${B}*x)+${D}`, fn:(x)=>A*Math.sin(B*x)+D, desc:'trig'};
+    }
+  }
+
+  function randomFunction(allowMultipleXTerms){
+    // Random function generation
+    // allowMultipleXTerms = true for level 15+
+    
+    const types = ['polynomial', 'trig', 'sqrt', 'exponential', 'logarithmic'];
+    const type = types[Math.floor(Math.random() * types.length)];
+    
+    switch(type){
+      case 'polynomial':
+        const degree = allowMultipleXTerms ? randInt(2, 4) : randInt(1, 3);
+        return generatePolynomial(degree, allowMultipleXTerms);
+      case 'trig':
+        const A = randInt(1, 4);
+        const B = randInt(1, 3);
+        const C = (randInt(-2, 2)/2).toFixed(1);
+        const D = randInt(-3, 3);
+        return {expr:`${A}*Math.sin(${B}*x+${C})+${D}`, fn:(x)=>A*Math.sin(B*x+parseFloat(C))+D, desc:'trig'};
+      case 'sqrt':
+        const coeff = randInt(1, 3);
+        const offset = randInt(-4, 4);
+        return {expr:`${coeff}*sqrt(x)+${offset}`, fn:(x)=>{const sx=Math.sqrt(x); return isFinite(sx)?coeff*sx+offset:NaN}, desc:'sqrt'};
+      case 'exponential':
+        const base = randInt(2, 3);
+        const scale = randInt(1, 3);
+        const shift = randInt(-3, 3);
+        return {expr:`${scale}*Math.pow(${base},x)+${shift}`, fn:(x)=>scale*Math.pow(base,x)+shift, desc:'exponential'};
+      case 'logarithmic':
+        const log_coeff = randInt(1, 2);
+        const log_offset = randInt(-3, 3);
+        return {expr:`${log_coeff}*Math.log(x)+${log_offset}`, fn:(x)=>{const lx=Math.log(x); return isFinite(lx)?log_coeff*lx+log_offset:NaN}, desc:'logarithmic'};
+    }
+    return constant();
+  }
+
+  function generatePolynomial(degree, allowMultiple){
+    // Generate polynomial with controlled number of x terms
+    let maxXTerms = allowMultiple ? 2 : 1;
+    let exprParts = [];
+    let constant_term = randInt(-6, 6);
+    
+    // Generate coefficients for x terms
+    let xTermsCount = 0;
+    for(let i = degree; i >= 1; i--){
+      if(xTermsCount < maxXTerms && Math.random() > 0.3){
+        const coef = randInt(-3, 3) || randInt(-1, 1) || 1;
+        if(i === 1){
+          exprParts.push(`${coef}*x`);
+        } else {
+          exprParts.push(`${coef}*x^${i}`);
+        }
+        xTermsCount++;
+      }
+    }
+    
+    if(exprParts.length === 0){
+      exprParts.push(`${randInt(-3, 3) || 1}*x`);
+    }
+    exprParts.push(String(constant_term));
+    
+    const expr = exprParts.join('+');
+    try {
+      const fn = new Function('x', 'return ' + expr);
+      fn(0); // test
+      return {expr, fn, desc:'polynomial'};
+    } catch(e) {
+      return constant();
+    }
+  }
 
   // Convert divisions to LaTeX fractions
   function toLatexFraction(input){
@@ -126,18 +235,36 @@
     ctx.clearRect(0,0,width,height);
     const showGrid = document.getElementById('showGrid').checked;
     const xr = xRange;
-    const yr = xr * (height/width) * 0.9; // keep aspect
+    const yr = xr * (height/width); // keep aspect ratio properly
+
+    // Calculate appropriate grid step size
+    function getGridStep(range) {
+      const steps = [0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000];
+      for (let s of steps) {
+        if (range / s <= 15) return s;
+      }
+      return 1000;
+    }
+
+    const xStep = getGridStep(xr * 2);
+    const yStep = getGridStep(yr * 2);
 
     // draw grid
     if(showGrid){
       ctx.strokeStyle='#e6e9f2'; ctx.lineWidth=1;
-      for(let i=-xr;i<=xr;i++){
+      // X grid lines
+      for(let i = Math.floor(-xr / xStep) * xStep; i <= Math.ceil(xr / xStep) * xStep; i += xStep){
         const xpx = mapX(i,xr);
-        ctx.beginPath(); ctx.moveTo(xpx,0); ctx.lineTo(xpx,height); ctx.stroke();
+        if(xpx >= 0 && xpx <= width) {
+          ctx.beginPath(); ctx.moveTo(xpx,0); ctx.lineTo(xpx,height); ctx.stroke();
+        }
       }
-      for(let j=Math.floor(-yr);j<=Math.ceil(yr);j++){
+      // Y grid lines
+      for(let j = Math.floor(-yr / yStep) * yStep; j <= Math.ceil(yr / yStep) * yStep; j += yStep){
         const ypx = mapY(j,yr);
-        ctx.beginPath(); ctx.moveTo(0,ypx); ctx.lineTo(width,ypx); ctx.stroke();
+        if(ypx >= 0 && ypx <= height) {
+          ctx.beginPath(); ctx.moveTo(0,ypx); ctx.lineTo(width,ypx); ctx.stroke();
+        }
       }
     }
     // axes
@@ -150,17 +277,21 @@
     // draw numbers on grid if enabled
     if(showNumbers){
       ctx.fillStyle='#888'; ctx.font='12px Inter, sans-serif'; ctx.textAlign='center'; ctx.textBaseline='top';
-      for(let i=-xr;i<=xr;i++){
-        if(i!==0){
+      for(let i = Math.floor(-xr / xStep) * xStep; i <= Math.ceil(xr / xStep) * xStep; i += xStep){
+        if(i !== 0){
           const xpx = mapX(i,xr);
-          ctx.fillText(String(i), xpx, y0+8);
+          if(xpx >= 0 && xpx <= width) {
+            ctx.fillText(String(i), xpx, y0+8);
+          }
         }
       }
       ctx.textAlign='right'; ctx.textBaseline='middle';
-      for(let j=Math.floor(-yr);j<=Math.ceil(yr);j++){
-        if(j!==0){
+      for(let j = Math.floor(-yr / yStep) * yStep; j <= Math.ceil(yr / yStep) * yStep; j += yStep){
+        if(j !== 0){
           const ypx = mapY(j,yr);
-          ctx.fillText(String(j), x0-8, ypx);
+          if(ypx >= 0 && ypx <= height) {
+            ctx.fillText(String(j), x0-8, ypx);
+          }
         }
       }
     }
@@ -266,8 +397,39 @@
     const userFn = parseUserExpr(expr);
     if(!userFn){ setMessage('Invalid function expression',true); return }
     // compare at random sample points
-    const tests = 8; let ok=true; for(let i=0;i<tests;i++){ const x = (Math.random()*2-1)*xRange; let a,b; try{ a=target.fn(x); b=userFn(x); }catch(e){ ok=false; break } if(!isFinite(a) || !isFinite(b) || Math.abs(a-b)>Math.max(0.0001, Math.abs(a)*0.05+0.2)){ ok=false; break }}
-    if(ok){ setMessage('Correct! advancing level.'); level++; queryHistory.length=0; document.getElementById('guessInput').value=''; setTimeout(newLevel,900); }
+    const tests = 8;
+    let ok = true;
+    let validChecks = 0;
+    let attempts = 0;
+    // try until we have `tests` valid comparisons or we've tried too many times
+    while(validChecks < tests && attempts < tests * 4){
+      attempts++;
+      const x = (Math.random() * 2 - 1) * xRange;
+      let a, b;
+      try{
+        a = target.fn(x);
+      }catch(e){ a = NaN }
+      try{
+        b = userFn(x);
+      }catch(e){ b = NaN }
+
+      const aFinite = isFinite(a);
+      const bFinite = isFinite(b);
+
+      // If both are non-finite (e.g. sqrt(-1), log(-1)), treat as matching and skip
+      if(!aFinite && !bFinite) continue;
+
+      // If one is finite and the other isn't, that's a mismatch
+      if(aFinite !== bFinite){ ok = false; break }
+
+      // Both finite: compare with tolerance
+      const tol = Math.max(0.0001, Math.abs(a) * 0.05 + 0.2);
+      if(Math.abs(a - b) > tol){ ok = false; break }
+
+      validChecks++;
+    }
+
+    if(ok && validChecks > 0){ setMessage('Correct! advancing level.'); level++; queryHistory.length=0; document.getElementById('guessInput').value=''; setTimeout(newLevel,900); }
     else setMessage('Not correct yet. Use queries or adjust your guess.',true);
     draw();
   }
@@ -364,7 +526,12 @@
 
   // Initialize
   window.addEventListener('load', ()=>{
-    setupCanvas(); wire(); newLevel();
+    setupCanvas();
+    // Sync checkbox states before wiring
+    showNumbers = document.getElementById('showNumbers').checked;
+    showQueryPoints = document.getElementById('showQueryPoints').checked;
+    wire();
+    newLevel();
     // Render MathJax for page elements
     if(window.MathJax) {
       MathJax.typesetPromise().catch(err => console.log(err));
