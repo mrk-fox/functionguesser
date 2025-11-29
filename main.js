@@ -14,6 +14,9 @@
   let panX = 0, panY = 0; // for mouse panning
   let isDragging = false, dragStartX = 0, dragStartY = 0;
   const queryHistory = [];
+  let totalPoints = 0;
+  let levelQueries = 0;
+  let levelWrongGuesses = 0;
 
   function generateTarget(l){
     // First 4 levels are fixed
@@ -49,12 +52,17 @@
   }
 
   function trigonometric(){
-    const A = randInt(1, 4);
-    const B = randInt(1, 3);
-    const C = (randInt(-2, 2)/2).toFixed(1);
-    const D = randInt(-3, 3);
-    const expr = `${A}*Math.sin(${B}*x+${C})+${D}`;
-    const fn = (x)=>A*Math.sin(B*x+parseFloat(C))+D;
+    // Amplitude: round or half-round (1, 1.5, 2, 2.5, 3, 3.5)
+    const ampOptions = [1, 1.5, 2, 2.5, 3, 3.5];
+    const A = ampOptions[Math.floor(Math.random() * ampOptions.length)];
+    // Period coefficient B: round or half numbers (0.5, 1, 1.5, 2)
+    const BOptions = [0.5, 1, 1.5, 2];
+    const B = BOptions[Math.floor(Math.random() * BOptions.length)];
+    // Vertical shift: round or half-round
+    const DOptions = [-3, -2.5, -2, -1.5, -1, 0, 1, 1.5, 2, 2.5, 3];
+    const D = DOptions[Math.floor(Math.random() * DOptions.length)];
+    const expr = `${A}*Math.sin(${B}*x)+${D}`;
+    const fn = (x)=>A*Math.sin(B*x)+D;
     return {expr, fn, desc:'trigonometric'};
   }
 
@@ -81,10 +89,13 @@
         const b4 = randInt(-4, 4);
         return {expr:`${a4}*sqrt(x)+${b4}`, fn:(x)=>{const sx=Math.sqrt(x); return isFinite(sx)?a4*sx+b4:NaN}, desc:'sqrt'};
       case 'trig':
-        const A = randInt(1, 4);
-        const B = randInt(1, 3);
-        const D = randInt(-3, 3);
-        return {expr:`${A}*Math.sin(${B}*x)+${D}`, fn:(x)=>A*Math.sin(B*x)+D, desc:'trig'};
+        const ampOptions1 = [1, 1.5, 2, 2.5, 3, 3.5];
+        const A1 = ampOptions1[Math.floor(Math.random() * ampOptions1.length)];
+        const BOptions1 = [0.5, 1, 1.5, 2];
+        const B1 = BOptions1[Math.floor(Math.random() * BOptions1.length)];
+        const DOptions1 = [-3, -2.5, -2, -1.5, -1, 0, 1, 1.5, 2, 2.5, 3];
+        const D1 = DOptions1[Math.floor(Math.random() * DOptions1.length)];
+        return {expr:`${A1}*Math.sin(${B1}*x)+${D1}`, fn:(x)=>A1*Math.sin(B1*x)+D1, desc:'trig'};
     }
   }
 
@@ -92,7 +103,7 @@
     // Random function generation
     // allowMultipleXTerms = true for level 15+
     
-    const types = ['polynomial', 'trig', 'sqrt', 'exponential', 'logarithmic'];
+    const types = ['polynomial', 'trig', 'sqrt', 'exponential'];
     const type = types[Math.floor(Math.random() * types.length)];
     
     switch(type){
@@ -100,11 +111,13 @@
         const degree = allowMultipleXTerms ? randInt(2, 4) : randInt(1, 3);
         return generatePolynomial(degree, allowMultipleXTerms);
       case 'trig':
-        const A = randInt(1, 4);
-        const B = randInt(1, 3);
-        const C = (randInt(-2, 2)/2).toFixed(1);
-        const D = randInt(-3, 3);
-        return {expr:`${A}*Math.sin(${B}*x+${C})+${D}`, fn:(x)=>A*Math.sin(B*x+parseFloat(C))+D, desc:'trig'};
+        const ampOptions2 = [1, 1.5, 2, 2.5, 3, 3.5];
+        const A2 = ampOptions2[Math.floor(Math.random() * ampOptions2.length)];
+        const BOptions2 = [0.5, 1, 1.5, 2];
+        const B2 = BOptions2[Math.floor(Math.random() * BOptions2.length)];
+        const DOptions2 = [-3, -2.5, -2, -1.5, -1, 0, 1, 1.5, 2, 2.5, 3];
+        const D2 = DOptions2[Math.floor(Math.random() * DOptions2.length)];
+        return {expr:`${A2}*Math.sin(${B2}*x)+${D2}`, fn:(x)=>A2*Math.sin(B2*x)+D2, desc:'trig'};
       case 'sqrt':
         const coeff = randInt(1, 3);
         const offset = randInt(-4, 4);
@@ -114,10 +127,6 @@
         const scale = randInt(1, 3);
         const shift = randInt(-3, 3);
         return {expr:`${scale}*Math.pow(${base},x)+${shift}`, fn:(x)=>scale*Math.pow(base,x)+shift, desc:'exponential'};
-      case 'logarithmic':
-        const log_coeff = randInt(1, 2);
-        const log_offset = randInt(-3, 3);
-        return {expr:`${log_coeff}*Math.log(x)+${log_offset}`, fn:(x)=>{const lx=Math.log(x); return isFinite(lx)?log_coeff*lx+log_offset:NaN}, desc:'logarithmic'};
     }
     return constant();
   }
@@ -173,6 +182,76 @@
     
     return result;
   }
+
+  // Format internal expression to clean LaTeX
+  function formatToLatex(expr){
+    if(!expr) return expr;
+    let result = expr;
+    
+    // Protect LaTeX commands by replacing them temporarily
+    result = result.replace(/\\pi/g, '{{PI}}');
+    result = result.replace(/\\frac/g, '{{FRAC}}');
+    result = result.replace(/\\sin/g, '{{SIN}}');
+    result = result.replace(/\\cos/g, '{{COS}}');
+    result = result.replace(/\\tan/g, '{{TAN}}');
+    result = result.replace(/\\log/g, '{{LOG}}');
+    result = result.replace(/\\sqrt/g, '{{SQRT}}');
+    result = result.replace(/\\exp/g, '{{EXP}}');
+    
+    // Convert Math.pow(x,n) to x^n
+    result = result.replace(/Math\.pow\(([^,]+),(\d+)\)/g, '($1)^$2');
+    
+    // Convert ** to ^ 
+    result = result.replace(/\*\*/g, '^');
+    
+    // Convert x*x*x*x to x^4, x*x*x to x^3, x*x to x^2
+    result = result.replace(/x\*x\*x\*x/g, 'x^4');
+    result = result.replace(/x\*x\*x/g, 'x^3');
+    result = result.replace(/x\*x/g, 'x^2');
+    
+    // Convert Math.sin, Math.cos, etc. to plain sin, cos, etc.
+    result = result.replace(/Math\.sin/g, 'sin');
+    result = result.replace(/Math\.cos/g, 'cos');
+    result = result.replace(/Math\.tan/g, 'tan');
+    result = result.replace(/Math\.log/g, 'log');
+    result = result.replace(/Math\.sqrt/g, 'sqrt');
+    result = result.replace(/Math\.pow/g, 'pow');
+    result = result.replace(/Math\.exp/g, 'exp');
+    
+    // Remove * before x when preceded by digit/letter: 3*x -> 3x
+    result = result.replace(/([0-9a-z])\*x/g, '$1x');
+    
+    // Remove * before opening paren in function calls: sin(*x) -> sin(x), 2*(3 -> 2(3
+    result = result.replace(/([0-9a-z])\*\(/g, '$1(');
+    result = result.replace(/(\))\*\(/g, '$1(');
+    
+    // Convert function names to LaTeX: sin( -> \sin(
+    result = result.replace(/\bsin\(/g, '\\sin(');
+    result = result.replace(/\bcos\(/g, '\\cos(');
+    result = result.replace(/\btan\(/g, '\\tan(');
+    result = result.replace(/\blog\(/g, '\\log(');
+    result = result.replace(/\bsqrt\(/g, '\\sqrt(');
+    result = result.replace(/\bexp\(/g, '\\exp(');
+    
+    // Handle PI and E constants
+    result = result.replace(/\bPI\b/g, '\\pi');
+    result = result.replace(/\bE\b/g, 'e');
+    
+    // Restore protected LaTeX commands
+    result = result.replace(/{{PI}}/g, '\\pi');
+    result = result.replace(/{{FRAC}}/g, '\\frac');
+    result = result.replace(/{{SIN}}/g, '\\sin');
+    result = result.replace(/{{COS}}/g, '\\cos');
+    result = result.replace(/{{TAN}}/g, '\\tan');
+    result = result.replace(/{{LOG}}/g, '\\log');
+    result = result.replace(/{{SQRT}}/g, '\\sqrt');
+    result = result.replace(/{{EXP}}/g, '\\exp');
+    
+    // Apply fraction formatting (division to \frac)
+    result = toLatexFraction(result);
+    
+    return result;
+  }
   function latexToJs(latex){
     if(!latex) return null;
     let js = latex.trim();
@@ -188,6 +267,14 @@
     js = js.replace(/\\pi/g, 'PI');
     js = js.replace(/\\e/g, 'E');
     
+    // FIRST: Handle exponents with proper precedence
+    // Special case: -x^n should become -(x**n)
+    js = js.replace(/-([a-zA-Z0-9]+)\^(\d+)/g, '-($1**$2)');
+    // General case: wrap base in parens: x^2 -> (x)**2
+    js = js.replace(/([a-zA-Z0-9\)])\^/g, '($1)**');
+    // Handle remaining ^ (shouldn't be any, but just in case)
+    js = js.replace(/\^/g, '**');
+    
     // Handle implicit multiplication: 2x -> 2*x, )( -> )*(, x( -> x*(
     js = js.replace(/(\d)([a-zA-Z])/g, '$1*$2');  // 2x -> 2*x
     js = js.replace(/([a-zA-Z])\(/g, '$1(');      // sin( stays as is
@@ -197,15 +284,13 @@
     js = js.replace(/([x])([a-z])/g, '$1*$2');    // x followed by function name: xsin -> x*sin
     js = js.replace(/\)([a-z])/g, ')*$1');        // ) followed by function: )sin -> )*sin
     
-    // Handle exponents: ^ -> **
-    js = js.replace(/\^/g, '**');
-    
     // Handle sqrt notation sqrt{x} or sqrt(x)
     js = js.replace(/sqrt\{([^}]+)\}/g, 'sqrt($1)');
     
     // Remove spaces
     js = js.replace(/\s+/g, '');
     
+    console.log('latexToJs: "' + latex + '" -> "' + js + '"');
     return js;
   }
 
@@ -219,10 +304,14 @@
     
     try{
       const fn = new Function('x','with(Math){ return '+jsExpr+' }');
-      // test
-      fn(0);
+      // Test it with a few values to see if it works
+      let testVal = fn(1);
+      console.log('parseUserExpr: created function, test at x=1: ' + testVal);
       return fn;
-    }catch(e){return null}
+    }catch(e){
+      console.log('parseUserExpr: ERROR creating function - ' + e.message);
+      return null;
+    }
   }
 
   // Drawing
@@ -324,14 +413,16 @@
   function plotFunction(fn,xr,yr){
     ctx.beginPath();
     const steps = width; let first=true;
+    let pointCount = 0;
     for(let i=0;i<=steps;i++){
       const t = i/steps; const x = -xr + t*(xr*2);
       let y;
       try{ y = fn(x); if(!isFinite(y)) y=NaN }catch(e){ y=NaN }
       if(isNaN(y)) { first=false; continue }
       const px = mapX(x,xr); const py = mapY(y,yr);
-      if(first){ ctx.moveTo(px,py); first=false } else ctx.lineTo(px,py);
+      if(first){ ctx.moveTo(px,py); first=false; pointCount++; } else { ctx.lineTo(px,py); pointCount++; }
     }
+    console.log('plotFunction: plotted ' + pointCount + ' points');
     ctx.stroke();
   }
 
@@ -344,6 +435,19 @@
     document.getElementById('levelDesc').textContent = target.desc||'';
   }
 
+  function updatePointsDisplay(){
+    document.getElementById('points').textContent = totalPoints;
+  }
+
+  function calculateLevelPoints(){
+    // Base: 1000 points
+    // First 2 queries are free, -50 per query after that
+    // First guess is free, -200 per wrong guess after that
+    const queriesPenalty = Math.max(0, levelQueries - 2) * 50;
+    const wrongGuessesPenalty = Math.max(0, levelWrongGuesses) * 200;
+    return 1000 - queriesPenalty - wrongGuessesPenalty;
+  }
+
   function newLevel(){
     target = generateTarget(level);
     // ensure target has fn
@@ -351,6 +455,8 @@
     document.getElementById('message').textContent='';
     document.getElementById('queryTableBody').innerHTML='';
     queryHistory.length=0;
+    levelQueries = 0;
+    levelWrongGuesses = 0;
     panX = 0; panY = 0;
     updateLevelInfo(); draw();
   }
@@ -366,6 +472,7 @@
     try{ y = target.fn(x); if(!isFinite(y)) y = '∞' }catch(e){ y='error' }
     queryHistory.unshift({x, y});
     if(queryHistory.length>30) queryHistory.pop();
+    levelQueries++;
     updateQueryTable();
     document.getElementById('queryX').value = '';
     draw();
@@ -429,15 +536,28 @@
       validChecks++;
     }
 
-    if(ok && validChecks > 0){ setMessage('Correct! advancing level.'); level++; queryHistory.length=0; document.getElementById('guessInput').value=''; setTimeout(newLevel,900); }
-    else setMessage('Not correct yet. Use queries or adjust your guess.',true);
+    if(ok && validChecks > 0){ 
+      const levelPoints = calculateLevelPoints();
+      totalPoints += levelPoints;
+      updatePointsDisplay();
+      setMessage(`Correct! +${levelPoints} points. advancing level.`); 
+      level++; 
+      queryHistory.length=0; 
+      document.getElementById('guessInput').value=''; 
+      setTimeout(newLevel,900); 
+    }
+    else { 
+      levelWrongGuesses++;
+      setMessage('Not correct yet. Use queries or adjust your guess.',true);
+    }
     draw();
   }
 
   function reveal(){ 
     const el = document.getElementById('message');
     el.textContent = '';
-    el.innerHTML = `$$f(x) = ${target.expr}$$`;
+    const formatted = formatToLatex(target.expr);
+    el.innerHTML = `$$f(x) = ${formatted}$$`;
     el.style.color = '#3b82f6';
     el.style.backgroundColor = '#dbeafe';
     if(window.MathJax) MathJax.typesetPromise([el]).catch(err => console.log(err));
@@ -461,7 +581,7 @@
     document.getElementById('queryX').addEventListener('keydown',e=>{ if(e.key==='Enter') queryX() });
     document.getElementById('submitGuess').addEventListener('click',submitGuess);
     document.getElementById('revealBtn').addEventListener('click',reveal);
-    document.getElementById('nextBtn').addEventListener('click', ()=>{ level++; newLevel(); });
+    document.getElementById('nextBtn').addEventListener('click', ()=>{ level++; queryHistory.length=0; document.getElementById('queryTableBody').innerHTML=''; newLevel(); });
     document.getElementById('rangeX').addEventListener('input', e=>{ xRange = Number(e.target.value); document.getElementById('rangeValue').textContent = xRange; draw(); });
     document.getElementById('showGrid').addEventListener('change', draw);
     document.getElementById('showNumbers').addEventListener('change', e=>{ showNumbers = e.target.checked; draw(); });
